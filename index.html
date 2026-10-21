@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>English Expert Shooter</title>
+<style>
+html,body{margin:0;padding:0;width:100%;height:100%;min-height:100dvh;overflow:hidden;background:#050817;font-family:Arial,sans-serif;touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+#gameCanvas{position:fixed;inset:0;display:block}
+#ui{position:fixed;inset:0;width:100dvw;height:100dvh;pointer-events:none}
+.topbar{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));display:flex;justify-content:space-between;align-items:center;color:#fff;font-weight:900;text-shadow:2px 2px 4px #000;z-index:4}
+.score{font-size:clamp(20px,3vw,32px)} .lives{display:flex;gap:7px}.life{width:48px;height:48px;object-fit:contain}
+.screen{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px;box-sizing:border-box;background:rgba(3,8,27,.68);color:#fff;text-align:center;pointer-events:auto;z-index:10}
+.screen.active{display:flex}.panel{width:min(760px,92vw);max-height:92dvh;overflow:auto;padding:clamp(18px,4vw,34px);box-sizing:border-box;border:2px solid rgba(255,255,255,.28);border-radius:24px;background:rgba(9,19,54,.9);box-shadow:0 10px 35px rgba(0,0,0,.5)}
+h1{margin:0 0 14px;font-size:clamp(30px,6vw,58px);line-height:1;color:#ffce38;text-shadow:3px 3px 0 #111}
+h2{margin:0 0 14px;font-size:clamp(27px,5vw,44px);color:#ffce38}
+p{font-size:clamp(16px,2.4vw,21px);line-height:1.45;margin:10px auto;max-width:650px}
+.rules{margin:16px auto 22px;text-align:left;display:inline-block;font-size:clamp(15px,2.2vw,19px);line-height:1.55}
+.btn{min-height:50px;padding:12px 28px;border:0;border-radius:14px;background:#ffce38;color:#111;font-size:clamp(17px,2.5vw,22px);font-weight:900;cursor:pointer;box-shadow:0 5px 0 #c99d00}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #c99d00}
+.shooters{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0 22px}
+.shooterChoice{border:3px solid transparent;border-radius:18px;background:rgba(255,255,255,.1);padding:12px;cursor:pointer;color:#fff;font-weight:800;font-size:16px;min-width:0}
+.shooterChoice img{display:block;width:100%;height:clamp(105px,20vw,190px);object-fit:contain}
+.shooterChoice.selected{border-color:#ffce38;background:rgba(255,206,56,.16)}
+#selectedPreview{width:min(300px,55vw);height:min(260px,34dvh);object-fit:contain;margin:8px auto 18px;display:block}
+#touchControls{position:absolute;inset:0;display:none;pointer-events:none;z-index:5}
+.pad{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));display:flex;gap:12px;pointer-events:auto}
+.pad.move{left:max(14px,env(safe-area-inset-left))}.pad.fire{right:max(14px,env(safe-area-inset-right))}
+.touchBtn{width:74px;height:74px;border:3px solid #fff;border-radius:50%;background:rgba(10,22,60,.78);color:#fff;font-size:31px;font-weight:900;touch-action:none}
+.touchBtn.shoot{width:90px;height:90px;background:#ffce38;color:#111;font-size:16px;border-color:#fff}
+.touchBtn.active,.touchBtn:active{transform:scale(.93)}
+@media(pointer:coarse),(hover:none){body.game-active #touchControls{display:block}.desktopHelp{display:none}}
+@media(pointer:fine) and (hover:hover){.touchHelp{display:none}}
+@media(max-width:650px),(max-height:520px){
+.panel{padding:14px 18px;border-radius:17px}.screen{padding:8px}h1{font-size:clamp(27px,7vw,42px);margin-bottom:8px}h2{font-size:clamp(24px,6vw,34px);margin-bottom:8px}p{margin:5px auto}.rules{margin:8px auto 12px;line-height:1.35}
+.shooters{gap:7px;margin:8px 0 12px}.shooterChoice{padding:5px;font-size:13px}.shooterChoice img{height:clamp(75px,20vw,120px)}
+.life{width:34px;height:34px}.touchBtn{width:60px;height:60px;font-size:25px}.touchBtn.shoot{width:72px;height:72px;font-size:13px}.pad{bottom:max(70px,env(safe-area-inset-bottom));gap:8px}
+#selectedPreview{height:min(150px,30dvh);margin:3px auto 8px}.btn{min-height:44px;padding:9px 22px}
+}
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="ui">
+  <div class="topbar"><div class="lives" id="lives"></div><div class="score">SCORE: <span id="score">0</span></div></div>
+
+  <section class="screen active" id="welcome">
+    <div class="panel">
+      <h1>ENGLISH EXPERT SHOOTER</h1>
+      <p>Shoot the <strong>clothing words</strong>.</p>
+      <div class="rules">
+        ✓ Clothing word = <strong>+100 points</strong><br>
+        ✗ Any other word = <strong>lose 1 life</strong><br>
+        <span class="desktopHelp">↑ / ↓ Move &nbsp; • &nbsp; SPACE Shoot</span>
+        <span class="touchHelp">▲ / ▼ Move &nbsp; • &nbsp; SHOOT Fire</span>
+      </div><br>
+      <button class="btn" id="playBtn">PLAY</button>
+    </div>
+  </section>
+
+  <section class="screen" id="choose">
+    <div class="panel">
+      <h2>CHOOSE YOUR SHOOTER</h2>
+      <div class="shooters">
+        <button class="shooterChoice" data-index="0"><img src="shooter1.png" alt="Shooter 1">SHOOTER 1</button>
+        <button class="shooterChoice" data-index="1"><img src="shooter2.png" alt="Shooter 2">SHOOTER 2</button>
+        <button class="shooterChoice" data-index="2"><img src="shooter3.png" alt="Shooter 3">SHOOTER 3</button>
+      </div>
+      <p>Tap or click a shooter to continue.</p>
+    </div>
+  </section>
+
+  <section class="screen" id="ready">
+    <div class="panel">
+      <h2>READY?</h2>
+      <img id="selectedPreview" src="shooter1.png" alt="Selected shooter">
+      <br><button class="btn" id="startBtn">START SHOOTING</button>
+    </div>
+  </section>
+
+  <section class="screen" id="gameover">
+    <div class="panel">
+      <h2>GAME OVER</h2>
+      <p id="finalScore">Your score: 0</p>
+      <button class="btn" id="againBtn">PLAY AGAIN</button>
+    </div>
+  </section>
+
+  <div id="touchControls" aria-label="Touch controls">
+    <div class="pad move">
+      <button class="touchBtn" id="upBtn" aria-label="Move up">▲</button>
+      <button class="touchBtn" id="downBtn" aria-label="Move down">▼</button>
+    </div>
+    <div class="pad fire"><button class="touchBtn shoot" id="shootBtn" aria-label="Shoot">SHOOT</button></div>
+  </div>
+</div>
+
+<script>
+const INITIAL_LIVES=3, BULLET_SPEED=10, WORD_SPEED=4, WORD_SPAWN_INTERVAL=1500, SHOOT_COOLDOWN=180;
+const SHOOTER_FILES=["shooter1.png","shooter2.png","shooter3.png"];
+// Muzzle positions as fractions of each character image's drawn width and height.
+// Keep these in the same order as SHOOTER_FILES if the artwork is replaced.
+const MUZZLE_POSITIONS=[
+ {x:.97,y:.27}, // shooter1: pistol
+ {x:.98,y:.20}, // shooter2: pistol
+ {x:.98,y:.27}  // shooter3: blaster
+];
+const TARGET_WORDS=`shirt
+T-shirt
+polo shirt
+blouse
+sweater
+sweatshirt
+hoodie
+cardigan
+jacket
+coat
+raincoat
+winter coat
+leather jacket
+denim jacket
+suit
+blazer
+vest
+dress
+skirt
+miniskirt
+long skirt
+jeans
+pants
+trousers
+shorts
+leggings
+tights
+tracksuit
+sweatpants
+sports shorts
+school uniform
+uniform
+pajamas
+nightdress
+dressing gown
+bathrobe
+underwear
+underpants
+undershirt
+bra
+sports bra
+boxer shorts
+socks
+ankle socks
+wool socks
+stockings
+shoes
+boots
+sneakers
+sandals
+slippers
+flip-flops
+high heels
+running shoes
+walking boots
+rain boots
+football boots
+school shoes
+winter boots
+flat shoes
+hat
+cap
+baseball cap
+wool hat
+sun hat
+scarf
+gloves
+mittens
+tie
+bow tie
+swimsuit
+bikini
+swimming trunks
+swimming shorts
+swimming cap
+apron
+overalls
+dungarees
+jumpsuit
+sportswear
+evening dress
+wedding dress
+summer dress
+party dress
+dressing-up clothes
+long-sleeved shirt
+short-sleeved shirt
+sleeveless shirt
+checked shirt
+striped shirt
+cotton shirt
+denim shorts
+swimming costume
+football shirt
+work clothes
+baby clothes
+winter clothes
+summer clothes
+rain jacket
+tracksuit jacket`.trim().split("\n").map(word=>word.trim()).filter(Boolean);
+const OTHER_WORDS=`apple
+airport
+animal
+apartment
+banana
+bank
+bathroom
+beach
+bedroom
+bicycle
+blanket
+book
+bottle
+bowl
+bread
+bridge
+broom
+bucket
+building
+bus
+butter
+cake
+camera
+candle
+car
+carrot
+castle
+cat
+ceiling
+chair
+cheese
+chicken
+chocolate
+church
+city
+classroom
+clock
+cloud
+coffee
+coin
+computer
+cookie
+country
+cousin
+cup
+daughter
+desk
+doctor
+dog
+dolphin
+door
+drum
+elephant
+elevator
+engine
+envelope
+factory
+farmer
+fence
+fire
+floor
+flower
+forest
+fork
+friend
+fridge
+garden
+glass
+grape
+guitar
+hammer
+helicopter
+hospital
+hotel
+house
+island
+kettle
+key
+kitchen
+knife
+lake
+lamp
+laptop
+lemon
+library
+lion
+mirror
+monkey
+moon
+mountain
+museum
+ocean
+onion
+oven
+pencil
+piano
+pillow
+pizza
+rabbit
+river`.trim().split("\n").map(word=>word.trim()).filter(Boolean);
+const WORDS=[...TARGET_WORDS.map(text=>({text,isTarget:true})),...OTHER_WORDS.map(text=>({text,isTarget:false}))];
+
+const canvas=document.getElementById("gameCanvas"),ctx=canvas.getContext("2d"),ui=document.getElementById("ui");
+const scoreEl=document.getElementById("score"),livesEl=document.getElementById("lives");
+const screens={welcome:document.getElementById("welcome"),choose:document.getElementById("choose"),ready:document.getElementById("ready"),gameover:document.getElementById("gameover")};
+const bgImg=new Image(); bgImg.src="bg-image.png";
+const shooterImgs=SHOOTER_FILES.map(src=>{const i=new Image();i.src=src;return i});
+const shootSound=new Audio("shooting.mp3"),coinSound=new Audio("coin.mp3"),wrongSound=new Audio("wrong.mp3"),bgMusic=new Audio("bg-music.mp3");
+bgMusic.loop=true;bgMusic.volume=.4;
+
+let W=innerWidth,H=innerHeight,selected=0,lives=3,score=0,bullets=[],words=[],keys={},gameRunning=false,lastTime=0,lastSpawn=0,lastShot=0,raf=0;
+const player={x:80,y:200,width:190,height:130,speed:6};
+
+function viewport(){const v=window.visualViewport;return {w:Math.round(v?v.width:innerWidth),h:Math.round(v?v.height:innerHeight)}}
+function resize(){const v=viewport();W=v.w;H=v.h;canvas.width=W;canvas.height=H;canvas.style.width=W+"px";canvas.style.height=H+"px";ui.style.width=W+"px";ui.style.height=H+"px";responsivePlayer();clampPlayer();if(!gameRunning)drawScene()}
+function isTouch(){return matchMedia("(pointer: coarse), (hover: none)").matches||navigator.maxTouchPoints>0}
+function responsivePlayer(){const s=Math.min(1,Math.max(.48,W/900));player.width=190*s;player.height=130*s;player.x=Math.max(25,Math.min(100,W*.07));player.speed=Math.max(4.5,6*s)}
+function clampPlayer(){const top=H<500?38:55;const bottom=isTouch()?Math.min(110,H*.24):25;player.y=Math.max(top,Math.min(player.y,H-bottom-player.height))}
+function show(name){Object.values(screens).forEach(s=>s.classList.remove("active"));if(name)screens[name].classList.add("active")}
+function drawBackground(){if(bgImg.complete&&bgImg.naturalWidth){ctx.drawImage(bgImg,0,0,W,H)}else{ctx.fillStyle="#071638";ctx.fillRect(0,0,W,H)}}
+function drawScene(){drawBackground()}
+function updateLives(){livesEl.innerHTML="";for(let i=0;i<lives;i++){const img=document.createElement("img");img.className="life";img.src=SHOOTER_FILES[selected];img.alt="Life";livesEl.appendChild(img)}}
+function startGame(){cancelAnimationFrame(raf);lives=INITIAL_LIVES;score=0;bullets=[];words=[];keys={};scoreEl.textContent="0";updateLives();show(null);gameRunning=true;document.body.classList.add("game-active");player.y=Math.max(60,(H-player.height)/2);clampPlayer();lastTime=performance.now();lastSpawn=lastTime;bgMusic.currentTime=0;bgMusic.play().catch(()=>{});raf=requestAnimationFrame(loop)}
+function endGame(){gameRunning=false;document.body.classList.remove("game-active");keys={};bgMusic.pause();document.getElementById("finalScore").textContent="Your score: "+score;show("gameover")}
+// Keep the lowest word's center above the gun's lowest reachable firing line.
+// This uses the same movement limits and scaled muzzle position as the shooter.
+function lowestWordY(){const bottom=isTouch()?Math.min(115,H*.24):35;const playerBottom=isTouch()?Math.min(110,H*.24):25;const lowestPlayerY=Math.max(H<500?38:55,H-playerBottom-player.height);const lowestMuzzleY=lowestPlayerY+player.height*MUZZLE_POSITIONS[selected].y;return Math.min(H-bottom-60,lowestMuzzleY-24-8)}
+function spawnWord(){const d=WORDS[Math.floor(Math.random()*WORDS.length)];const minY=70,maxY=Math.max(minY,lowestWordY());words.push({x:W+40,y:minY+Math.random()*(maxY-minY),width:150,height:48,text:d.text,isTarget:d.isTarget})}
+function shoot(){if(!gameRunning)return;const now=performance.now();if(now-lastShot<SHOOT_COOLDOWN)return;lastShot=now;const muzzle=MUZZLE_POSITIONS[selected];bullets.push({x:player.x+player.width*muzzle.x,y:player.y+player.height*muzzle.y,r:6});shootSound.currentTime=0;shootSound.play().catch(()=>{})}
+function collision(c,r){const dx=Math.abs(c.x-r.x-r.width/2),dy=Math.abs(c.y-r.y-r.height/2);if(dx>r.width/2+c.r||dy>r.height/2+c.r)return false;if(dx<=r.width/2||dy<=r.height/2)return true;const x=dx-r.width/2,y=dy-r.height/2;return x*x+y*y<=c.r*c.r}
+function update(){
+ if(keys.ArrowUp)player.y-=player.speed;if(keys.ArrowDown)player.y+=player.speed;clampPlayer();if(keys[" "])shoot();
+ for(let i=bullets.length-1;i>=0;i--){bullets[i].x+=BULLET_SPEED;if(bullets[i].x>W+20)bullets.splice(i,1)}
+ for(let i=words.length-1;i>=0;i--){words[i].x-=WORD_SPEED;if(words[i].x+words[i].width<0)words.splice(i,1)}
+ for(let i=bullets.length-1;i>=0;i--){for(let j=words.length-1;j>=0;j--){if(collision(bullets[i],words[j])){const w=words[j];bullets.splice(i,1);words.splice(j,1);if(w.isTarget){score+=100;scoreEl.textContent=score;coinSound.currentTime=0;coinSound.play().catch(()=>{})}else{lives--;updateLives();wrongSound.currentTime=0;wrongSound.play().catch(()=>{})}break}}}
+}
+function drawPlayer(){const img=shooterImgs[selected];if(img.complete&&img.naturalWidth)ctx.drawImage(img,player.x,player.y,player.width,player.height);else{ctx.fillStyle="#ffce38";ctx.fillRect(player.x,player.y,player.width,player.height)}}
+function drawBullets(){ctx.fillStyle="#ffce38";for(const b of bullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}}
+function roundedRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
+function drawWords(){const fs=W<700?19:26;ctx.font=`bold ${fs}px Arial`;ctx.textBaseline="middle";for(const w of words){const pad=18;w.width=ctx.measureText(w.text).width+pad*2;w.height=W<700?42:50;ctx.fillStyle="#ffce38";roundedRect(w.x,w.y,w.width,w.height,w.height/2);ctx.fill();ctx.fillStyle="#000";ctx.fillText(w.text,w.x+pad,w.y+w.height/2+1)}}
+function loop(t){if(!gameRunning)return;lastTime=t;drawBackground();update();drawPlayer();drawBullets();drawWords();if(t-lastSpawn>WORD_SPAWN_INTERVAL){spawnWord();lastSpawn=t}if(lives<=0){endGame();return}raf=requestAnimationFrame(loop)}
+
+document.getElementById("playBtn").addEventListener("click",()=>show("choose"));
+document.querySelectorAll(".shooterChoice").forEach(btn=>btn.addEventListener("click",()=>{selected=Number(btn.dataset.index);document.querySelectorAll(".shooterChoice").forEach(b=>b.classList.toggle("selected",b===btn));document.getElementById("selectedPreview").src=SHOOTER_FILES[selected];updateLives();show("ready")}));
+document.getElementById("startBtn").addEventListener("click",startGame);
+document.getElementById("againBtn").addEventListener("click",()=>{show("choose");document.querySelectorAll(".shooterChoice").forEach(b=>b.classList.remove("selected"))});
+
+addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();keys[e.key]=true});
+addEventListener("keyup",e=>{keys[e.key]=false});
+function bindHold(id,key,fire=false){const b=document.getElementById(id);const down=e=>{e.preventDefault();b.setPointerCapture?.(e.pointerId);keys[key]=true;b.classList.add("active");if(fire)shoot()};const up=e=>{e.preventDefault();keys[key]=false;b.classList.remove("active")};b.addEventListener("pointerdown",down);["pointerup","pointercancel","lostpointercapture"].forEach(n=>b.addEventListener(n,up));b.addEventListener("contextmenu",e=>e.preventDefault())}
+bindHold("upBtn","ArrowUp");bindHold("downBtn","ArrowDown");bindHold("shootBtn"," ",true);
+addEventListener("blur",()=>{keys={};document.querySelectorAll(".touchBtn").forEach(b=>b.classList.remove("active"))});
+addEventListener("resize",resize);addEventListener("orientationchange",()=>{setTimeout(resize,100);setTimeout(resize,400)});if(window.visualViewport){visualViewport.addEventListener("resize",resize);visualViewport.addEventListener("scroll",resize)}
+bgImg.addEventListener("load",()=>{if(!gameRunning)drawScene()});resize();updateLives();
+</script>
+</body>
+</html>
